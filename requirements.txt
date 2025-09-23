@@ -1,0 +1,16 @@
+
+scikit-learn
+surprise
+pandas
+numpy
+scipy
+sentence-transformers
+streamlit
+fastapi
+uvicorn
+matplotlib
+seaborn
+plotly
+dvc
+
+
