@@ -61,9 +61,9 @@ def display_movies(movies, title="Películas"):
             with st.container():
                 st.markdown(f"""
                 <div style="border: 1px solid #ddd; border-radius: 10px; padding: 15px; margin: 10px 0; background-color: #f9f9f9;">
-                    <h4 style="color: #1f77b4; margin: 0 0 10px 0;">{movie["title"]}</h4>
-                    <p style="margin: 5px 0;"><strong>ID:</strong> {movie["movie_id"]}</p>
-                    <p style="margin: 5px 0;"><strong>Géneros:</strong> {movie["genres"]}</p>
+                    <h4 style="color: #1f77b4; margin: 0 0 10px 0;">{movie['title']}</h4>
+                    <p style="margin: 5px 0;"><strong>ID:</strong> {movie['movie_id']}</p>
+                    <p style="margin: 5px 0;"><strong>Géneros:</strong> {movie['genres']}</p>
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -122,7 +122,7 @@ elif page == "Recomendaciones por Usuario":
     with col2:
         if "user_recommendations" in st.session_state:
             recommendations = st.session_state.user_recommendations
-            st.success(f"Recomendaciones para el Usuario {recommendations["user_id"]}")
+            st.success(f"Recomendaciones para el Usuario {recommendations['user_id']}")
             display_movies(recommendations["recommendations"], "Películas Recomendadas")
             
             # Mostrar calificaciones del usuario
@@ -152,8 +152,8 @@ elif page == "Películas Similares":
             movie = st.session_state.selected_movie
             st.markdown(f"""
             **Película Seleccionada:**
-            - **Título**: {movie["title"]}
-            - **Géneros**: {movie["genres"]}
+            - **Título**: {movie['title']}
+            - **Géneros**: {movie['genres']}
             """)
         
         if st.button("Encontrar Películas Similares", type="primary"):
@@ -166,7 +166,7 @@ elif page == "Películas Similares":
     with col2:
         if "similar_movies" in st.session_state:
             similar_movies = st.session_state.similar_movies
-            st.success(f"Películas similares a la película ID {similar_movies["movie_id"]}")
+            st.success(f"Películas similares a la película ID {similar_movies['movie_id']}")
             display_movies(similar_movies["similar_movies"], "Películas Similares")
 
 # Página de Películas Populares
@@ -212,13 +212,13 @@ elif page == "Análisis de Datos":
             st.metric("Total de Calificaciones", f"{len(ratings):,}")
         
         with col2:
-            st.metric("Total de Usuarios", f"{ratings["user_id"].nunique():,}")
+            st.metric("Total de Usuarios", f"{ratings['user_id'].nunique():,}")
         
         with col3:
-            st.metric("Total de Películas", f"{ratings["movie_id"].nunique():,}")
+            st.metric("Total de Películas", f"{ratings['movie_id'].nunique():,}")
         
         with col4:
-            st.metric("Calificación Promedio", f"{ratings["rating"].mean():.2f}")
+            st.metric("Calificación Promedio", f"{ratings['rating'].mean():.2f}")
         
         # Gráficos
         col1, col2 = st.columns(2)
@@ -260,7 +260,7 @@ elif page == "Análisis de Datos":
             title="Distribución de Actividad de Usuarios",
             labels={"x": "Número de Calificaciones por Usuario", "y": "Número de Usuarios"}
         )
-            st.plotly_chart(fig_activity, use_container_width=True)
+        st.plotly_chart(fig_activity, use_container_width=True)
         
         # Top películas más calificadas
         st.subheader("🎬 Top 10 Películas Más Calificadas")
@@ -288,5 +288,3 @@ st.markdown("""
     <p>Desarrollado con Streamlit, FastAPI, scikit-learn y Surprise</p>
 </div>
 """, unsafe_allow_html=True)
-
-
