@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import requests
@@ -62,9 +61,9 @@ def display_movies(movies, title="Películas"):
             with st.container():
                 st.markdown(f"""
                 <div style="border: 1px solid #ddd; border-radius: 10px; padding: 15px; margin: 10px 0; background-color: #f9f9f9;">
-                    <h4 style="color: #1f77b4; margin: 0 0 10px 0;">{movie['title']}</h4>
-                    <p style="margin: 5px 0;"><strong>ID:</strong> {movie['movie_id']}</p>
-                    <p style="margin: 5px 0;"><strong>Géneros:</strong> {movie['genres']}</p>
+                    <h4 style="color: #1f77b4; margin: 0 0 10px 0;">{movie["title"]}</h4>
+                    <p style="margin: 5px 0;"><strong>ID:</strong> {movie["movie_id"]}</p>
+                    <p style="margin: 5px 0;"><strong>Géneros:</strong> {movie["genres"]}</p>
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -121,17 +120,17 @@ elif page == "Recomendaciones por Usuario":
                     st.session_state.user_recommendations = recommendations
     
     with col2:
-        if 'user_recommendations' in st.session_state:
+        if "user_recommendations" in st.session_state:
             recommendations = st.session_state.user_recommendations
-            st.success(f"Recomendaciones para el Usuario {recommendations['user_id']}")
-            display_movies(recommendations['recommendations'], "Películas Recomendadas")
+            st.success(f"Recomendaciones para el Usuario {recommendations["user_id"]}")
+            display_movies(recommendations["recommendations"], "Películas Recomendadas")
             
             # Mostrar calificaciones del usuario
             st.markdown("### 📊 Historial de Calificaciones del Usuario")
             user_ratings = make_api_request(f"/users/{user_id}/ratings?limit=10")
             if user_ratings:
-                ratings_df = pd.DataFrame(user_ratings['ratings'])
-                st.dataframe(ratings_df[['title', 'genres', 'rating']], use_container_width=True)
+                ratings_df = pd.DataFrame(user_ratings["ratings"])
+                st.dataframe(ratings_df[["title", "genres", "rating"]], use_container_width=True)
 
 # Página de Películas Similares
 elif page == "Películas Similares":
@@ -149,12 +148,12 @@ elif page == "Películas Similares":
             if movie_info:
                 st.session_state.selected_movie = movie_info
         
-        if 'selected_movie' in st.session_state:
+        if "selected_movie" in st.session_state:
             movie = st.session_state.selected_movie
             st.markdown(f"""
             **Película Seleccionada:**
-            - **Título**: {movie['title']}
-            - **Géneros**: {movie['genres']}
+            - **Título**: {movie["title"]}
+            - **Géneros**: {movie["genres"]}
             """)
         
         if st.button("Encontrar Películas Similares", type="primary"):
@@ -165,10 +164,10 @@ elif page == "Películas Similares":
                     st.session_state.similar_movies = similar_movies
     
     with col2:
-        if 'similar_movies' in st.session_state:
+        if "similar_movies" in st.session_state:
             similar_movies = st.session_state.similar_movies
-            st.success(f"Películas similares a la película ID {similar_movies['movie_id']}")
-            display_movies(similar_movies['similar_movies'], "Películas Similares")
+            st.success(f"Películas similares a la película ID {similar_movies["movie_id"]}")
+            display_movies(similar_movies["similar_movies"], "Películas Similares")
 
 # Página de Películas Populares
 elif page == "Películas Populares":
@@ -183,9 +182,9 @@ elif page == "Películas Populares":
             if popular_movies:
                 st.session_state.popular_movies = popular_movies
     
-    if 'popular_movies' in st.session_state:
+    if "popular_movies" in st.session_state:
         popular_movies = st.session_state.popular_movies
-        display_movies(popular_movies['popular_movies'], "Películas Más Populares")
+        display_movies(popular_movies["popular_movies"], "Películas Más Populares")
 
 # Página de Análisis de Datos
 elif page == "Análisis de Datos":
@@ -194,17 +193,17 @@ elif page == "Análisis de Datos":
     # Cargar datos localmente para análisis
     try:
         # Intentar cargar los datos desde el directorio local
-        data_path = '../data/ml-1m/'
+        data_path = "../data/ml-1m/"
         
         # Cargar ratings
-        rnames = ['user_id', 'movie_id', 'rating', 'timestamp']
-        ratings = pd.read_csv(os.path.join(data_path, 'ratings.dat'), 
-                             sep='::', header=None, names=rnames, engine='python')
+        rnames = ["user_id", "movie_id", "rating", "timestamp"]
+        ratings = pd.read_csv(os.path.join(data_path, "ratings.dat"), 
+                             sep="::", header=None, names=rnames, engine="python")
         
         # Cargar movies
-        mnames = ['movie_id', 'title', 'genres']
-        movies = pd.read_csv(os.path.join(data_path, 'movies.dat'), 
-                            sep='::', header=None, names=mnames, engine='python', encoding='latin-1')
+        mnames = ["movie_id", "title", "genres"]
+        movies = pd.read_csv(os.path.join(data_path, "movies.dat"), 
+                            sep="::", header=None, names=mnames, engine="python", encoding="latin-1")
         
         # Estadísticas básicas
         col1, col2, col3, col4 = st.columns(4)
@@ -213,67 +212,67 @@ elif page == "Análisis de Datos":
             st.metric("Total de Calificaciones", f"{len(ratings):,}")
         
         with col2:
-            st.metric("Total de Usuarios", f"{ratings['user_id'].nunique():,}")
+            st.metric("Total de Usuarios", f"{ratings["user_id"].nunique():,}")
         
         with col3:
-            st.metric("Total de Películas", f"{ratings['movie_id'].nunique():,}")
+            st.metric("Total de Películas", f"{ratings["movie_id"].nunique():,}")
         
         with col4:
-            st.metric("Calificación Promedio", f"{ratings['rating'].mean():.2f}")
+            st.metric("Calificación Promedio", f"{ratings["rating"].mean():.2f}")
         
         # Gráficos
         col1, col2 = st.columns(2)
         
         with col1:
             # Distribución de calificaciones
-            rating_counts = ratings['rating'].value_counts().sort_index()
+            rating_counts = ratings["rating"].value_counts().sort_index()
             fig_ratings = px.bar(
                 x=rating_counts.index, 
                 y=rating_counts.values,
                 title="Distribución de Calificaciones",
-                labels={'x': 'Calificación', 'y': 'Número de Calificaciones'}
+                labels={"x": "Calificación", "y": "Número de Calificaciones"}
             )
             st.plotly_chart(fig_ratings, use_container_width=True)
         
         with col2:
             # Top 10 géneros más populares
             all_genres = []
-            for genres in movies['genres']:
-                all_genres.extend(genres.split('|'))
+            for genres in movies["genres"]:
+                all_genres.extend(genres.split("|"))
             
             genre_counts = pd.Series(all_genres).value_counts().head(10)
             fig_genres = px.bar(
                 x=genre_counts.values,
                 y=genre_counts.index,
-                orientation='h',
+                orientation="h",
                 title="Top 10 Géneros Más Populares",
-                labels={'x': 'Número de Películas', 'y': 'Género'}
+                labels={"x": "Número de Películas", "y": "Género"}
             )
             st.plotly_chart(fig_genres, use_container_width=True)
         
         # Actividad de usuarios
         st.subheader("📈 Análisis de Actividad de Usuarios")
-        user_activity = ratings.groupby('user_id')['rating'].count().sort_values(ascending=False)
+        user_activity = ratings.groupby("user_id")["rating"].count().sort_values(ascending=False)
         
         fig_activity = px.histogram(
             x=user_activity.values,
             nbins=50,
             title="Distribución de Actividad de Usuarios",
-            labels={'x': 'Número de Calificaciones por Usuario', 'y': 'Número de Usuarios'}
+            labels={"x": "Número de Calificaciones por Usuario", "y": "Número de Usuarios"}
         )
-        st.plotly_chart(fig_activity, use_container_width=True)
+            st.plotly_chart(fig_activity, use_container_width=True)
         
         # Top películas más calificadas
         st.subheader("🎬 Top 10 Películas Más Calificadas")
-        movie_ratings = ratings.groupby('movie_id').agg({
-            'rating': ['count', 'mean']
-        }).round(2)
-        movie_ratings.columns = ['num_ratings', 'avg_rating']
-        movie_ratings = movie_ratings.merge(movies, on='movie_id')
-        top_movies = movie_ratings.nlargest(10, 'num_ratings')
+        movie_ratings = ratings.groupby("movie_id").agg({
+            "rating": ["count", "mean"]
+        })
+        movie_ratings.columns = ["num_ratings", "avg_rating"]
+        movie_ratings = movie_ratings.merge(movies, on="movie_id")
+        top_movies = movie_ratings.nlargest(10, "num_ratings")
         
         st.dataframe(
-            top_movies[['title', 'genres', 'num_ratings', 'avg_rating']],
+            top_movies[["title", "genres", "num_ratings", "avg_rating"]],
             use_container_width=True
         )
         
@@ -289,4 +288,5 @@ st.markdown("""
     <p>Desarrollado con Streamlit, FastAPI, scikit-learn y Surprise</p>
 </div>
 """, unsafe_allow_html=True)
+
 
