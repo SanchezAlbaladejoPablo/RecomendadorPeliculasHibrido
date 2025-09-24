@@ -43,6 +43,8 @@ def train_content_model(movies):
     return tfidf, cosine_sim
 
 def get_content_recommendations(movie_id, movies, cosine_sim, n=10):
+    if movie_id not in movies["movie_id"].values:
+        return pd.DataFrame()
     idx = movies[movies["movie_id"] == movie_id].index[0]
     sim_scores = list(enumerate(cosine_sim[idx]))
     sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
@@ -51,23 +53,46 @@ def get_content_recommendations(movie_id, movies, cosine_sim, n=10):
     return movies.iloc[movie_indices]
 
 # Recomendador Híbrido
-def get_hybrid_recommendations(user_id, svd_model, movies, cosine_sim, ratings, weight_cf=0.7, weight_content=0.3, n=10):
+def get_hybrid_recommendations(user_id, svd_model, movies, cosine_sim, ratings_df, weight_cf=0.7, weight_content=0.3, n=10, custom_ratings=None):
+    # Si se proporcionan valoraciones personalizadas, se crea un usuario temporal
+    if custom_ratings is not None:
+        # Asignar un user_id temporal que no exista en el dataset original
+        temp_user_id = ratings_df["user_id"].max() + 1 
+        new_ratings_df = pd.DataFrame(custom_ratings)
+        new_ratings_df["user_id"] = temp_user_id
+        new_ratings_df["timestamp"] = pd.to_datetime("now").timestamp()
+        
+        # Combinar con los ratings existentes para el modelo SVD
+        # Nota: Para un modelo SVD ya entrenado, las nuevas valoraciones no afectarán el entrenamiento
+        # pero se usarán para predecir las películas no vistas por este usuario temporal.
+        # Aquí, simplemente las añadimos para que el flujo de 'rated_movie_ids' funcione.
+        # En un escenario real, se reentrenaría el modelo o se usaría un enfoque de cold-start más sofisticado.
+        ratings_for_prediction = pd.concat([ratings_df, new_ratings_df], ignore_index=True)
+        current_user_ratings = new_ratings_df # Las valoraciones del usuario actual
+        user_id_to_use = temp_user_id
+    else:
+        ratings_for_prediction = ratings_df
+        current_user_ratings = ratings_df[ratings_df["user_id"] == user_id]
+        user_id_to_use = user_id
+
     all_movie_ids = movies["movie_id"].unique()
-    rated_movie_ids = ratings[ratings["user_id"] == user_id]["movie_id"].tolist()
+    rated_movie_ids = current_user_ratings["movie_id"].tolist()
     unrated_movie_ids = [mid for mid in all_movie_ids if mid not in rated_movie_ids]
 
     svd_preds = []
     for movie_id in unrated_movie_ids:
-        svd_preds.append((movie_id, svd_model.predict(user_id, movie_id).est))
+        # Asegurarse de que el movie_id existe en el modelo SVD
+        if movie_id in movies["movie_id"].values:
+            svd_preds.append((movie_id, svd_model.predict(user_id_to_use, movie_id).est))
     svd_preds.sort(key=lambda x: x[1], reverse=True)
     top_svd_movies = svd_preds[:n]
 
-    if rated_movie_ids:
-        last_rated_movie_id = ratings[ratings["user_id"] == user_id].sort_values(by="timestamp", ascending=False)["movie_id"].iloc[0]
+    content_movie_ids = []
+    if not current_user_ratings.empty:
+        # Usar la película mejor valorada por el usuario para recomendaciones de contenido
+        last_rated_movie_id = current_user_ratings.sort_values(by="rating", ascending=False)["movie_id"].iloc[0]
         content_recs = get_content_recommendations(last_rated_movie_id, movies, cosine_sim, n=n)
         content_movie_ids = content_recs["movie_id"].tolist()
-    else:
-        content_movie_ids = []
 
     hybrid_scores = {}
     for movie_id, score in top_svd_movies:
@@ -75,7 +100,7 @@ def get_hybrid_recommendations(user_id, svd_model, movies, cosine_sim, ratings, 
 
     for movie_id in content_movie_ids:
         if movie_id in hybrid_scores:
-            hybrid_scores[movie_id] += weight_content * 5
+            hybrid_scores[movie_id] += weight_content * 5 # Ponderar la recomendación de contenido
         else:
             hybrid_scores[movie_id] = weight_content * 5
 
@@ -85,7 +110,7 @@ def get_hybrid_recommendations(user_id, svd_model, movies, cosine_sim, ratings, 
 
 
 if __name__ == "__main__":
-    data_path = '../data/ml-1m/'
+    data_path = os.path.join(os.path.dirname(__file__), "..", "data", "ml-1m")
     movies_path = os.path.join(data_path, "movies.dat")
     ratings_path = os.path.join(data_path, "ratings.dat")
 
@@ -98,15 +123,15 @@ if __name__ == "__main__":
     print("\nEntrenando modelo SVD...")
     svd_model, svd_rmse = train_svd_model(ratings)
     print(f"RMSE del modelo SVD: {svd_rmse:.4f}")
-    with open("../models/svd_model.pkl", "wb") as f:
+    with open(os.path.join(os.path.dirname(__file__), "..", "models", "svd_model.pkl"), "wb") as f:
         pickle.dump(svd_model, f)
     print("Modelo SVD guardado en models/svd_model.pkl")
 
     print("\nEntrenando recomendador de contenido...")
     tfidf_vectorizer, cosine_sim_matrix = train_content_model(movies)
-    with open("../models/tfidf_vectorizer.pkl", "wb") as f:
+    with open(os.path.join(os.path.dirname(__file__), "..", "models", "tfidf_vectorizer.pkl"), "wb") as f:
         pickle.dump(tfidf_vectorizer, f)
-    with open("../models/cosine_sim_matrix.pkl", "wb") as f:
+    with open(os.path.join(os.path.dirname(__file__), "..", "models", "cosine_sim_matrix.pkl"), "wb") as f:
         pickle.dump(cosine_sim_matrix, f)
     print("Vectorizador TF-IDF y matriz de similitud de coseno guardados en models/")
 
@@ -121,5 +146,16 @@ if __name__ == "__main__":
     print(hybrid_recs[["title", "genres"]])
 
     print("\nComponentes del modelo híbrido (SVD, TF-IDF, Cosine Sim) guardados.")
+
+    # Ejemplo de uso con valoraciones personalizadas
+    print("\nGenerando recomendaciones híbridas para un perfil personalizado...")
+    custom_user_ratings = [
+        {"movie_id": 1, "rating": 5}, # Toy Story
+        {"movie_id": 260, "rating": 4}, # Star Wars: Episode IV - A New Hope
+        {"movie_id": 1196, "rating": 5} # Star Wars: Episode V - The Empire Strikes Back
+    ]
+    hybrid_recs_custom = get_hybrid_recommendations(None, svd_model, movies, cosine_sim_matrix, ratings, n=10, custom_ratings=custom_user_ratings)
+    print(hybrid_recs_custom[["title", "genres"]])
+
 
 
