@@ -94,7 +94,6 @@ if st.session_state.current_view == 'home':
         """, unsafe_allow_html=True)
         if st.button("🎲 Elegir Usuario Aleatorio", use_container_width=True, type="primary"):
             st.session_state.current_view = 'random_user_flow'
-            st.session_state.current_view = 'random_user_flow'
 
     with col2:
         st.markdown("""
@@ -105,7 +104,6 @@ if st.session_state.current_view == 'home':
         """, unsafe_allow_html=True)
         if st.button("⭐ Crear tu perfil rápido", use_container_width=True, type="secondary"):
             st.session_state.current_view = 'custom_profile_flow'
-            st.session_state.current_view = 'random_user_flow'
 
     # Estado de la API con diseño mejorado
     st.markdown("---")
@@ -123,7 +121,6 @@ elif st.session_state.current_view == 'random_user_flow':
     
     if st.button("⬅️ Volver al Inicio"):
         st.session_state.current_view = 'home'
-        st.session_state.current_view = 'random_user_flow'
 
     if 'random_user_data' not in st.session_state:
         with st.spinner("Seleccionando un usuario aleatorio y sus valoraciones..."):
@@ -133,7 +130,6 @@ elif st.session_state.current_view == 'random_user_flow':
             else:
                 st.error("No se pudo cargar la información del usuario aleatorio.")
                 st.session_state.current_view = 'home'
-                st.session_state.current_view = 'random_user_flow'
 
     if 'random_user_data' in st.session_state:
         user_id = st.session_state.random_user_data['user_id']
@@ -183,68 +179,74 @@ elif st.session_state.current_view == 'custom_profile_flow':
     
     if st.button("⬅️ Volver al Inicio"):
         st.session_state.current_view = 'home'
-        st.session_state.current_view = 'random_user_flow'
 
+    # Inicializar estructuras de estado
     if 'movies_to_rate' not in st.session_state:
         with st.spinner("Cargando películas populares para valorar..."):
-            response = make_api_request("/popular_movies_for_rating?n=10")
+            response = make_api_request("/popular_movies_for_rating?n=5")
             if response and response["movies"]:
                 st.session_state.movies_to_rate = response["movies"]
-                st.session_state.user_custom_ratings = {movie["movie_id"]: 0 for movie in response["movies"]}
+                st.session_state.user_custom_ratings = {}
             else:
                 st.error("No se pudieron cargar películas para valorar.")
                 st.session_state.current_view = 'home'
-                st.session_state.current_view = 'random_user_flow'
 
     if 'movies_to_rate' in st.session_state:
         st.subheader("Valora estas películas (1-5 estrellas)")
-        st.markdown("Por favor, valora algunas películas para que podamos entender tus gustos y ofrecerte las mejores recomendaciones.")
-        
-        all_rated = True
+        st.markdown("Puedes refrescar la lista si no has visto estas películas. Necesitamos al menos 10 valoraciones para darte buenas recomendaciones.")
+
+        # Mostrar sliders para las películas actuales
         for movie in st.session_state.movies_to_rate:
             movie_id = movie["movie_id"]
             current_rating = st.session_state.user_custom_ratings.get(movie_id, 0)
-            
+
             new_rating = st.slider(
                 f"**{movie['title']}** ({movie['genres']})",
                 min_value=0, max_value=5, value=current_rating, step=1,
                 key=f"rating_{movie_id}"
             )
-            if new_rating == 0:
-                all_rated = False
+
             st.session_state.user_custom_ratings[movie_id] = new_rating
 
-        if st.button("Obtener Recomendaciones Personalizadas", type="primary", disabled=not all_rated):
+        # Botón para refrescar lista (reemplazar las 5 películas actuales)
+        if st.button("🔄 Mostrar otras películas"):
+            with st.spinner("Cargando nuevas películas..."):
+                response = make_api_request("/popular_movies_for_rating?n=5")
+                if response and response["movies"]:
+                    st.session_state.movies_to_rate = response["movies"]
+                else:
+                    st.warning("No se pudieron cargar más películas.")
+
+        # Contador de valoraciones válidas
+        rated_count = sum(1 for r in st.session_state.user_custom_ratings.values() if r > 0)
+        st.info(f"✅ Has valorado {rated_count} películas")
+
+        # Botón de recomendaciones (desbloqueado solo si tienes >= 10 valoraciones)
+        if st.button("Obtener Recomendaciones Personalizadas", type="primary", disabled=rated_count < 10):
             with st.spinner("Generando recomendaciones personalizadas..."):
-                # Filtrar películas no valoradas (rating 0)
                 valid_ratings = [
                     {"movie_id": mid, "rating": rating}
                     for mid, rating in st.session_state.user_custom_ratings.items()
                     if rating > 0
                 ]
-                
-                if not valid_ratings:
-                    st.warning("Por favor, valora al menos una película para obtener recomendaciones.")
-                else:
-                    recommendations_response = make_api_request(
-                        "/recommend/custom_profile",
-                        method='POST',
-                        data={"ratings": valid_ratings}
-                    )
-                    
-                    if recommendations_response:
-                        st.session_state.custom_profile_recommendations = recommendations_response["recommendations"]
-                        st.session_state.current_view = 'display_custom_recommendations'
-                        st.session_state.current_view = 'random_user_flow'
-                    else:
-                        st.error("No se pudieron generar recomendaciones personalizadas.")
 
+                recommendations_response = make_api_request(
+                    "/recommend/custom_profile",
+                    method='POST',
+                    data={"ratings": valid_ratings}
+                )
+
+                if recommendations_response:
+                    st.session_state.custom_profile_recommendations = recommendations_response["recommendations"]
+                    st.session_state.current_view = 'display_custom_recommendations'
+                else:
+                    st.error("No se pudieron generar recomendaciones personalizadas.")
+                    
 elif st.session_state.current_view == 'display_custom_recommendations':
     st.header("✨ Tus Recomendaciones Personalizadas")
     
     if st.button("⬅️ Volver a Valorar Películas"):
         st.session_state.current_view = 'custom_profile_flow'
-        st.session_state.current_view = 'random_user_flow'
 
     if 'custom_profile_recommendations' in st.session_state:
         display_movies_table(st.session_state.custom_profile_recommendations, "Películas Recomendadas")
@@ -257,7 +259,6 @@ elif st.session_state.current_view == 'display_custom_recommendations':
         st.warning("No hay recomendaciones para mostrar. Por favor, valora algunas películas.")
         if st.button("Volver a la página de valoración"):
             st.session_state.current_view = 'custom_profile_flow'
-            st.session_state.current_view = 'random_user_flow'
 
 # Footer
 st.markdown("---")
